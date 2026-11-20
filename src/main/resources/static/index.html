@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Inventory</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #007bff; color: white; }
+        .low-stock { color: red; font-weight: bold; }
+        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 8px 16px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-danger:hover { background-color: #c82333; }
+        .btn-undo { background-color: #ffc107; color: black; }
+        .btn-undo:hover { background-color: #e0a800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Warehouse Inventory Tracker</h2>
+        
+        <table id="inventoryTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="controls">
+            <input type="text" id="productId" placeholder="Product ID (e.g., P100)">
+            <input type="number" id="quantity" placeholder="Quantity">
+            <button onclick="stockIn()">Stock In</button>
+            <button class="btn-danger" onclick="stockOut()">Stock Out</button>
+            <button class="btn-undo" onclick="undoAction()">Undo Last</button>
+        </div>
+    </div>
+
+    <script>
+        // Fetch products from the Java Backend
+        async function loadProducts() {
+            const response = await fetch('/api/products');
+            const products = await response.json();
+            const tbody = document.querySelector('#inventoryTable tbody');
+            tbody.innerHTML = ''; // Clear current table
+
+            products.forEach(p => {
+                const tr = document.createElement('tr');
+                const statusText = p.lowStock ? '<span class="low-stock">LOW STOCK!</span>' : 'OK';
+                tr.innerHTML = `
+                    <td>${p.id}</td>
+                    <td>${p.name}</td>
+                    <td>${p.quantity}</td>
+                    <td>$${p.price.toFixed(2)}</td>
+                    <td>${p.type}</td>
+                    <td>${statusText}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Helper function to send POST requests
+        async function sendAction(url, id, qty) {
+            let fetchUrl = url;
+            if (id) fetchUrl += `?id=${id}&quantity=${qty}`;
+            
+            await fetch(fetchUrl, { method: 'POST' });
+            loadProducts(); // Refresh table
+        }
+
+        function stockIn() {
+            const id = document.getElementById('productId').value;
+            const qty = document.getElementById('quantity').value;
+            if (id && qty) sendAction('/api/stockin', id, qty);
+        }
+
+        function stockOut() {
+            const id = document.getElementById('productId').value;
+            const qty = document.getElementById('quantity').value;
+            if (id && qty) sendAction('/api/stockout', id, qty);
+        }
+
+        function undoAction() {
+            sendAction('/api/undo');
+        }
+
+        // Load products as soon as the page opens
+        loadProducts();
+    </script>
+</body>
+</html>
